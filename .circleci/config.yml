@@ -218,7 +218,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: ["89:eb:ff:65:75:bb:e3:59:82:fd:1d:70:58:81:39:0c"]
+          fingerprints: ["40:da:c9:ae:be:4a:72:55:a1:f6:1f:92:87:0d:25:ae"]
       - attach_workspace:
           at: .
       - run:
@@ -257,10 +257,122 @@ jobs:
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
               echo "save migration"
-              curl -k https://kvdb.io/Cy7cviHQCdm74W96Tgn36i/migration_${CIRCLE_WORKFLOW_ID:0:7} \
+              curl -k https://kvdb.io/M8NTh9kT327fA6ombuZZS/migration_${CIRCLE_WORKFLOW_ID:0:7} \
                     -d 'success'
             fi
       - destroy-environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+
+  deploy-frontend:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          working_directory: /tmp
+          command: |
+            sudo apt-get install unzip
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+      - run:
+          name: Get backend url
+          command: |
+            cd .circleci/ansible/
+            ls -la
+            cat inventory.txt
+            export BACKEND_IP=$(sed -n '2p' inventory.txt)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+            cd ../..
+            cd frontend
+            echo API_URL="http://${BACKEND_IP}:3030" >> .env
+            cat .env
+      - run:
+          name: Deploy frontend objects
+          command: |
+            cd frontend
+            npm install
+            npm run build
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            ls -la
+            echo "deploy source to s3"
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+      - destroy-environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+      - revert-migrations:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+
+  deploy-backend:
+    docker:
+      - image: python:3.9.0-alpine
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["40:da:c9:ae:be:4a:72:55:a1:f6:1f:92:87:0d:25:ae"]
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          working_directory: /tmp
+          command: |
+            apk add --update ansible curl rsync openssh nodejs npm
+            ansible --version
+            pip install awscli
+            aws --version
+            npm install pm2
+      - run:
+          name: Save all db varibles in env file
+          command: |
+            cd backend
+            touch .env
+            echo NODE_ENV=local >> .env
+            echo TYPEORM_HOST=duyblx-udacity.csuqoreyhedj.us-east-1.rds.amazonaws.com >> .env
+            echo TYPEORM_CONNECTION=postgres >> .env
+            echo TYPEORM_DATABASE=postgres >> .env
+            echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> .env
+            echo TYPEORM_MIGRATIONS=./src/migrations/*.ts >> .env
+            echo TYPEORM_MIGRATIONS_DIR=./src/migrations >> .env
+            echo TYPEORM_PASSWORD=password >> .env
+            echo TYPEORM_PORT=5432 >> .env
+            TYPEORM_USERNAME=postgres >> .env
+      - run:
+          name: Build backend
+          command: |
+            cd backend
+            cat .env
+            npm install
+            npm run build
+            cd ..
+            tar -C backend -czvf artifact.tar.gz .
+            pwd
+            ls -la
+      - run:
+          name: Verify SSH host
+          command: |
+            cd .circleci/ansible/
+            ls -la
+            cat inventory.txt
+            export BACKEND_IP=$(sed -n '2p' inventory.txt)
+            echo "BACKEND_IP: $BACKEND_IP"
+            ssh-keyscan -H $BACKEND_IP >> ~/.ssh/known_hosts
+      - run:
+          name: Deploy backend
+          command: |
+            cd .circleci/ansible
+            echo "Contents  of the inventory.txt file is -------"
+            cat inventory.txt
+            ansible-playbook -i inventory.txt deploy-be.yml
+      - destroy-environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+      - revert-migrations:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
 
@@ -287,3 +399,8 @@ workflows:
           requires: [deploy-infrastructure]
       - run-migrations:
           requires: [configure-infrastructure]
+      - deploy-frontend:
+          requires: [run-migrations]
+      - deploy-backend:
+          requires: [run-migrations]
+      
