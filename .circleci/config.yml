@@ -42,7 +42,32 @@ commands:
             fi
           when: << parameters.when >>
 
-
+  configure-infrastructure:
+    docker:
+      - image: python:3.9.0-alpine
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["40:da:c9:ae:be:4a:72:55:a1:f6:1f:92:87:0d:25:ae"]
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          working_directory: ./.circleci/ansible
+          command: |
+            apk add --update ansible
+            ansible --version
+      - run:
+          name: Configure server
+          command: |
+            cd .circleci/ansible 
+            pwd &&
+            ls -la
+            cat inventory.txt
+            ansible-playbook -i inventory.txt configure-server.yml
+      - destroy-environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
 jobs:
   build-frontend:
     docker:
@@ -228,3 +253,5 @@ workflows:
             branches:
               only:
                 - master
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
