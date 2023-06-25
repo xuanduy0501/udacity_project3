@@ -2,7 +2,7 @@ version: 2.1
 
 commands:
   destroy-environment:
-    description: Destroy be and fe cfm stacks given a workflow ID.
+    description: Destroy be and fe clfm stacks given a workflow ID.
     parameters:
       when:
         type: string
@@ -10,7 +10,7 @@ commands:
         type: string
     steps:
       - run:
-          name: Destroy env
+          name: Destroy environments
           command: |
             echo "Destroying environment: << parameters.id >> "
             aws s3 rm "s3://udapeople-<< parameters.id >>" --recursive
@@ -141,6 +141,8 @@ jobs:
           command: |
             cd backend
             npm install
+            npm audit fix --audit-level=critical
+            npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
 
   scan-backend:
@@ -155,9 +157,9 @@ jobs:
           command: |
             cd backend
             npm install
+            npm audit fix --audit-level=critical
+            npm audit fix --audit-level=critical --force
             npm audit --audit-level=critical
-
-
 workflows:
   default:
     jobs:
