@@ -218,7 +218,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: ["40:da:c9:ae:be:4a:72:55:a1:f6:1f:92:87:0d:25:ae"]
+          fingerprints: ["89:eb:ff:65:75:bb:e3:59:82:fd:1d:70:58:81:39:0c"]
       - attach_workspace:
           at: .
       - run:
@@ -315,7 +315,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: ["40:da:c9:ae:be:4a:72:55:a1:f6:1f:92:87:0d:25:ae"]
+          fingerprints: ["89:eb:ff:65:75:bb:e3:59:82:fd:1d:70:58:81:39:0c"]
       - attach_workspace:
           at: .
       - run:
@@ -333,7 +333,7 @@ jobs:
             cd backend
             touch .env
             echo NODE_ENV=local >> .env
-            echo TYPEORM_HOST=duyblx-udacity.csuqoreyhedj.us-east-1.rds.amazonaws.com >> .env
+            echo TYPEORM_HOST=database-2.cicvv8ubmjyc.us-east-1.rds.amazonaws.com >> .env
             echo TYPEORM_CONNECTION=postgres >> .env
             echo TYPEORM_DATABASE=postgres >> .env
             echo TYPEORM_ENTITIES=./src/modules/domain/**/*.entity.ts >> .env
@@ -368,13 +368,61 @@ jobs:
             cd .circleci/ansible
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
-            ansible-playbook -i inventory.txt deploy-be.yml
+            ansible-playbook -i inventory.txt deploy-backend.yml
       - destroy-environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
       - revert-migrations:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
+
+  smoke-test:
+    docker:
+      - image: python:3.9.0-alpine
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install dependencies
+          working_directory: /tmp
+          command: |
+            apk add --update curl nodejs npm
+            pip install awscli
+      - run:
+          name: Backend smoke test
+          command: |
+            cd .circleci/ansible/
+            ls -la
+            cat inventory.txt
+            export BACKEND_IP=$(sed -n '2p' inventory.txt)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "$API_URL"
+            echo "$API_URL/api/status"
+            if curl "$API_URL/api/status" | grep "ok"
+            then
+              return 0
+            else
+              return 1
+            fi
+      - run:
+          name: Frontend smoke test.
+          command: |
+            URL="http://udapeople-${CIRCLE_WORKFLOW_ID:0:7}.s3-website-us-east-1.amazonaws.com/#/employees"            
+            echo ${URL} 
+            if curl -s ${URL} | grep "Welcome"
+            then
+              return 1
+            else
+              return 1
+            fi
+      - destroy-environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+      - revert-migrations:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
+
 
 workflows:
   default:
@@ -403,4 +451,5 @@ workflows:
           requires: [run-migrations]
       - deploy-backend:
           requires: [run-migrations]
-      
+      - smoke-test:
+          requires: [deploy-backend, deploy-frontend]
