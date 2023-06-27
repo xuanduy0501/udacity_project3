@@ -444,13 +444,10 @@ jobs:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
   cleanup:
-    executor: aws-cli/default
+    docker:
+      - image: amazon/aws-cli
     steps:
       - checkout
-      - exports
-      - aws-cli/setup
-      - attach_workspace:
-          at: /home/circleci/workspace
       - run:
           name: "Fetch stacks and save the old stack name"
           command: |
