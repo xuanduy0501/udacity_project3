@@ -443,7 +443,39 @@ jobs:
       - revert-migrations:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
-
+  cleanup:
+    docker:
+      # Docker image here
+      - image: amazon/aws-cli
+    steps:
+      # Checkout code from git
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            yum install -y tar gzip
+            curl -sL https://rpm.nodesource.com/setup_lts.x | bash -
+            yum -y install nodejs
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Remove old stacks and files
+          command: |
+            # your code here
+            export OldWorkflowID=`cat ~/current_cloudfront.txt`
+            export STACKS=$(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+              --stack-status-filter CREATE_COMPLETE --no-paginate --output text)
+            echo "STACKS: ${STACKS}"
+            echo "OldWorkflowID: ${OldWorkflowID}"
+            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            then
+              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+              aws cloudformation delete-stack --stack-name "prod-${OldWorkflowID}-udapeople-backend"
+              aws cloudformation delete-stack --stack-name "prod-${OldWorkflowID}-udapeople-frontend"
+              echo "Old Stacks deleted."
+            else
+              echo "No old Stacks found."
+            fi
 
 workflows:
   default:
@@ -476,3 +508,5 @@ workflows:
           requires: [deploy-backend, deploy-frontend]
       - cloudfront-update:
           requires: [smoke-test]
+      - cleanup:
+          requires: [cloudfront-update]
