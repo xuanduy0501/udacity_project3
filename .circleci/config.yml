@@ -443,39 +443,45 @@ jobs:
       - revert-migrations:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
-  cleanup:
-    docker:
-      # Docker image here
-      - image: amazon/aws-cli
+  clean-up:
+    executor: aws-cli/default
     steps:
-      # Checkout code from git
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            yum install -y tar gzip
-            curl -sL https://rpm.nodesource.com/setup_lts.x | bash -
-            yum -y install nodejs
+      - exports
+      - aws-cli/setup
       - attach_workspace:
-          at: ~/
+          at: /home/circleci/workspace
       - run:
-          name: Remove old stacks and files
+          name: "Fetch stacks and save the old stack name"
           command: |
-            # your code here
-            export OldWorkflowID=`cat ~/current_cloudfront.txt`
-            export STACKS=$(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
-              --stack-status-filter CREATE_COMPLETE --no-paginate --output text)
-            echo "STACKS: ${STACKS}"
-            echo "OldWorkflowID: ${OldWorkflowID}"
-            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-            then
-              aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-              aws cloudformation delete-stack --stack-name "prod-${OldWorkflowID}-udapeople-backend"
-              aws cloudformation delete-stack --stack-name "prod-${OldWorkflowID}-udapeople-frontend"
-              echo "Old Stacks deleted."
-            else
-              echo "No old Stacks found."
-            fi
+            # Fetch the stack names
+            export STACKS=(
+              $(aws cloudformation list-stacks \
+                  --query "StackSummaries[*].StackName" \
+                  --no-paginate --output text \
+                  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE
+              )
+            )
+            for stack in ${STACKS[@]}
+            do
+              if [[ ! "$stack" =~ "$CUR_SHORT_HASH" ]] && [[ ! "$stack" =~ "Final-Project" ]]
+              then
+                if [[ "$stack" =~ "Frontend" ]]
+                then
+                  touch $WORKSPACE_DIR/destroyfrontendstack
+                  echo $stack > $WORKSPACE_DIR/destroyfrontendstack
+                  touch $WORKSPACE_DIR/destroybucketname
+                  # Set stack name lowercase as a bucket name
+                  bucket_name=$(eval echo $stack | tr '[:upper:]' '[:lower:]')
+                  echo $bucket_name > $WORKSPACE_DIR/destroybucketname
+                fi
+                if [[ "$stack" =~ "Backend" ]]
+                then
+                  touch $WORKSPACE_DIR/destroybackendstack
+                  echo $stack > $WORKSPACE_DIR/destroybackendstack
+                fi
+              fi
+            done
 
 workflows:
   default:
