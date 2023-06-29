@@ -361,7 +361,7 @@ jobs:
             cat inventory.txt
             export BACKEND_IP=$(sed -n '2p' inventory.txt)
             echo "BACKEND_IP: $BACKEND_IP"
-            
+
             ssh-keyscan -H $BACKEND_IP >> ~/.ssh/known_hosts
       - run:
           name: Deploy backend
@@ -394,6 +394,7 @@ jobs:
           name: Backend smoke test
           command: |
             cd .circleci/ansible/
+            
             cat inventory.txt
             export BACKEND_IP=$(sed -n '2p' inventory.txt)
             export API_URL="http://${BACKEND_IP}:3030"
