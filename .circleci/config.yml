@@ -361,7 +361,6 @@ jobs:
             cat inventory.txt
             export BACKEND_IP=$(sed -n '2p' inventory.txt)
             echo "BACKEND_IP: $BACKEND_IP"
-
             ssh-keyscan -H $BACKEND_IP >> ~/.ssh/known_hosts
       - run:
           name: Deploy backend
@@ -369,7 +368,7 @@ jobs:
             cd .circleci/ansible
             echo "Contents  of the inventory.txt file is -------"
             cat inventory.txt
-            ansible-playbook -i inventory.txt deploy-be.yml
+            ansible-playbook -i inventory.txt deploy-be .yml
       - destroy-environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
@@ -394,7 +393,7 @@ jobs:
           name: Backend smoke test
           command: |
             cd .circleci/ansible/
-            
+            ls -la
             cat inventory.txt
             export BACKEND_IP=$(sed -n '2p' inventory.txt)
             export API_URL="http://${BACKEND_IP}:3030"
@@ -423,6 +422,7 @@ jobs:
       - revert-migrations:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
+
   cloudfront-update:
     docker:
       - image: amazon/aws-cli
