@@ -1,6 +1,6 @@
 ---
 - name: "configuration server"
-  hosts: web
+  hosts: webserver
   user: ubuntu
   become: true
   become_method: sudo
