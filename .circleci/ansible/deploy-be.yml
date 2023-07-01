@@ -1,6 +1,6 @@
 ---
 - name: Deploy and start server
-  hosts: web
+  hosts: webserver
   user: ubuntu
   gather_facts: false
   vars:

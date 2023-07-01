@@ -9,7 +9,7 @@
   apt:
     upgrade: yes
 
-- name: "Remove dependencies that are no longer required"
+- name: "Remove dependencies"
   become: true
   apt:
     autoremove: yes
@@ -29,7 +29,7 @@
     production: yes
     state: "present"
 
-- name: "Export env"
+- name: "Exp env"
   become: true
   shell: |
     touch /etc/profile.d/env.sh
