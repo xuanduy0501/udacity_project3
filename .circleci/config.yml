@@ -451,36 +451,33 @@ jobs:
     steps:
       - checkout
       - run:
-          name: "Fetch stacks and save the old stack name"
+          name: "Delete old stack"
           command: |
-            # Fetch the stack names
-            export STACKS=(
-              $(aws cloudformation list-stacks \
-                  --query "StackSummaries[*].StackName" \
-                  --no-paginate --output text \
-                  --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE
-              )
-            )
+            export OldWorkflowID=$(aws cloudformation \
+                    list-exports --query "Exports[?Name==\`WorkflowID\`].Value" \
+                    --no-paginate --output text)
+            echo OldWorkflowID: "${OldWorkflowID}"
+            echo CIRCLE_WORKFLOW_ID "${CIRCLE_WORKFLOW_ID:0:7}"       
+            export STACKS=($(aws cloudformation list-stacks --query "StackSummaries[*].StackName" \
+                      --stack-status-filter CREATE_COMPLETE --no-paginate --output text)) 
+            echo Stack names: "${STACKS[@]}"
             for stack in ${STACKS[@]}
-            do
-              if [[ ! "$stack" =~ "$CUR_SHORT_HASH" ]] && [[ ! "$stack" =~ "Final-Project" ]]
-              then
-                if [[ "$stack" =~ "Frontend" ]]
+              do
+                export STR="$stack"
+                echo $STR
+                export ID_NUM=${STR: -7}
+                echo "ID_NUM ${ID_NUM}"
+                if [ "${OldWorkflowID}" != "${ID_NUM}" ]
                 then
-                  touch $WORKSPACE_DIR/destroyfrontendstack
-                  echo $stack > $WORKSPACE_DIR/destroyfrontendstack
-                  touch $WORKSPACE_DIR/destroybucketname
-                  # Set stack name lowercase as a bucket name
-                  bucket_name=$(eval echo $stack | tr '[:upper:]' '[:lower:]')
-                  echo $bucket_name > $WORKSPACE_DIR/destroybucketname
+                  if aws s3 ls "s3://udapeople-${ID_NUM}" 2>&1 | grep -q 'NoSuchBucket';
+                  then
+                    echo "Nothing to delete"
+                  else
+                    aws s3 rm "s3://udapeople-${ID_NUM}" --recursive
+                    aws cloudformation delete-stack --stack-name "$stack"
+                  fi
                 fi
-                if [[ "$stack" =~ "Backend" ]]
-                then
-                  touch $WORKSPACE_DIR/destroybackendstack
-                  echo $stack > $WORKSPACE_DIR/destroybackendstack
-                fi
-              fi
-            done
+              done
 
 workflows:
   default:
