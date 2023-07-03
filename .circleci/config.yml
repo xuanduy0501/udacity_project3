@@ -29,7 +29,7 @@ commands:
       - run:
           name: Revert migrations
           command: |
-            SUCCESS=$(curl https://kvdb.io/M8NTh9kT327fA6ombuZZS/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            SUCCESS=$(curl https://kvdb.io/Cy7cviHQCdm74W96Tgn36i/migration_${CIRCLE_WORKFLOW_ID:0:7})
             echo $SUCCESS
             if [ "$SUCCESS" == "success" ];
             then

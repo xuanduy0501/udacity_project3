@@ -1,1 +1,1 @@
-https://us-east-1.console.aws.amazon.com/s3/buckets/udapeople-b520d14?region=us-east-1&tab=objects
+http://udapeople-6b2df8b.s3-website-us-east-1.amazonaws.com
