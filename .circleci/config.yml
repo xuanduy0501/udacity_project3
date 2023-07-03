@@ -29,7 +29,7 @@ commands:
       - run:
           name: Revert migrations
           command: |
-            SUCCESS=$(curl https://kvdb.io/B9u1oNBPXKQKjomYMridot/migration_${CIRCLE_WORKFLOW_ID:0:7})
+            SUCCESS=$(curl https://kvdb.io/8w2Liv4QJRFAuHPqkPwLnx/migration_${CIRCLE_WORKFLOW_ID:0:7})
             echo $SUCCESS
             if [ "$SUCCESS" == "success" ];
             then
@@ -258,7 +258,7 @@ jobs:
             if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
             then
               echo "save migration"
-              curl -k https://kvdb.io/B9u1oNBPXKQKjomYMridot/migration_${CIRCLE_WORKFLOW_ID:0:7} \
+              curl -k https://kvdb.io/8w2Liv4QJRFAuHPqkPwLnx/migration_${CIRCLE_WORKFLOW_ID:0:7} \
                     -d 'success'
             fi
       - destroy-environment:
