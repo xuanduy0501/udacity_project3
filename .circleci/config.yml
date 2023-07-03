@@ -31,7 +31,7 @@ commands:
           command: |
             SUCCESS=$(curl https://kvdb.io/8w2Liv4QJRFAuHPqkPwLnx/migration_${CIRCLE_WORKFLOW_ID:0:7})
             echo $SUCCESS
-            if [ "$SUCCESS" == "success" ];
+            if [ "$SUCCESS" == "1%" ];
             then
               echo "------------------ Confirm to revert -------------" 
               cd ~/project/backend
